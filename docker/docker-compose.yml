@@ -1,0 +1,48 @@
+version: "3"
+services:
+  cache:
+    image: redis:latest
+    expose:
+      - 6379
+    volumes:
+      - ./cache/redis.conf:/usr/local/etc/redis/redis.conf
+    command: [ "redis-server", "/usr/local/etc/redis/redis.conf" ]
+
+  db_mysql:
+    image: mysql:5.7
+    restart: always
+    environment:
+      MYSQL_DATABASE: "database"
+      MYSQL_USER: "user"
+      MYSQL_PASSWORD: "password"
+      MYSQL_ROOT_PASSWORD: "root_password"
+    ports:
+      - 33060:3306 #use 33060 port for debug this application
+
+  nginx:
+    build:
+      context: nginx
+      args:
+        UID: "3000"
+    ports:
+      - 80:80
+    volumes:
+      - ../:/var/www/app
+      - ./nginx/conf.d/:/etc/nginx/conf.d/
+      - ./nginx/logs/:/var/log/nginx/
+    links:
+      - app
+    depends_on:
+      - app
+      - db_mysql
+      - cache
+
+  app:
+    build:
+      context: php
+      args:
+        UID: "3000"
+    working_dir: /var/www/app
+    volumes:
+      - ../:/var/www/app
+      - ./.env:/var/www/app/.env
